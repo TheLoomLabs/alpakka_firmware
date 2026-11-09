@@ -8,6 +8,9 @@ This is a fork of the official
 - **Gyro acceleration**: per-profile curves (Linear, Power, Natural, Sigmoid)
   for precise aim plus easy 180 / 360 turns.
 - **Polling rate**: 250 / 500 / 1000 Hz over USB (wireless stays at 250 Hz).
+- **Real-world calibration**: sensitivity in real degrees per profile, with an
+  in-game 360 test turn to measure each game.
+- **Vertical acceleration**: less acceleration boost on vertical movement.
 - **Aim-down-sights modifier**: separate sensitivity and acceleration while a
   chosen button is held.
 - **Stabilization**: smoothing and tightening for slow movements.

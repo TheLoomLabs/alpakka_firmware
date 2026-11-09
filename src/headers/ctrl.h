@@ -50,6 +50,7 @@ typedef enum Ctrl_cfg_type_enum {
     GYRO_USER_OFFSET,
     THUMBSTICK_SMOOTH_SAMPLES,
     POLLING_RATE,
+    CALIBRATION_360,  // Fork extension, runtime only (see calib360.h).
 } Ctrl_cfg_type;
 
 typedef enum CtrlSectionType_enum {
@@ -245,7 +246,10 @@ typedef struct __packed _CtrlGyro {
     // Vertical acceleration (fork extension): reduction of the acceleration
     // boost on the vertical (pitch) axis, in %. 0 = same as horizontal.
     uint8_t accel_vertical_cut;
-    uint8_t _padding[36];
+    // Real-world calibration (fork extension, 0 = off, use global mouse sens).
+    uint16_t rw_counts_360;    // Mouse counts for a 360 turn in the game.
+    uint8_t rw_ratio;          // In-game degrees per controller degree, 0.1 units.
+    uint8_t _padding[33];
 } CtrlGyro;
 
 typedef struct __packed _CtrlGyroAxis {

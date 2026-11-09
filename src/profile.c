@@ -16,6 +16,7 @@
 #include "common.h"
 #include "power.h"
 #include "wireless.h"
+#include "calib360.h"
 
 Profile profiles[PROFILE_SLOTS];
 uint8_t profile_active_index = -1;
@@ -202,6 +203,7 @@ void Profile__load_from_config(Profile *self, CtrlProfile *profile) {
         .smooth_time = ctrl_gyro.smooth_time,
         .space = ctrl_gyro.space,
         .accel_vertical = 1 - (ctrl_gyro.accel_vertical_cut > 100 ? 100 : ctrl_gyro.accel_vertical_cut) / 100.0f,
+        .rw_scale = gyro_real_world_scale(ctrl_gyro.rw_counts_360, ctrl_gyro.rw_ratio),
     });
 }
 
@@ -291,6 +293,12 @@ void profile_report_active() {
             sleep_ms(10);  // Enough time for wireless packet to be sent.
         #endif
         power_restart();
+    }
+    // Real-world calibration pauses profile input (release all on enter/exit).
+    if (calib360_take_reset()) profile_reset_all();
+    if (calib360_is_active()) {
+        calib360_report();
+        return;
     }
     // Reset all profiles (state) if needed.
     if (pending_reset) profile_reset_all();

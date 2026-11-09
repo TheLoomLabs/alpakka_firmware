@@ -40,6 +40,7 @@ typedef struct _GyroAccel {
 } GyroAccel;
 
 float gyro_accel_gain(GyroAccel *accel, float speed);
+float gyro_real_world_scale(uint16_t counts_360, uint8_t ratio_tenths);
 
 typedef struct _GyroExtras {
     uint8_t ads_engage;  // Pin, PIN_NONE if disabled.
@@ -50,6 +51,8 @@ typedef struct _GyroExtras {
     float smooth_time;       // ms.
     GyroSpace space;
     float accel_vertical;    // Share of the acceleration boost on pitch, 0-1.
+    float rw_scale;          // Real-world calibration: counts per base tick per
+                             // raw gyro unit. 0 = use global mouse sensitivity.
 } GyroExtras;
 
 typedef struct Gyro_struct Gyro;

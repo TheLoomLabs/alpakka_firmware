@@ -7,6 +7,7 @@
 #include "config.h"
 #include "version.h"
 #include "logging.h"
+#include "calib360.h"
 
 Ctrl ctrl_empty() {
     // For some reason, the very first USB message goes to "waste" and ignored
@@ -102,6 +103,11 @@ void ctrl_config_set(Ctrl_cfg_type key, uint8_t preset, uint8_t values[5]) {
     else if (key == POLLING_RATE) {
         config_set_polling_rate(preset);
     }
+    else if (key == CALIBRATION_360) {
+        // Preset 1 starts with counts in values[0-1] (little endian), 0 stops.
+        if (preset) calib360_start(values[0] | (values[1] << 8));
+        else calib360_stop();
+    }
 }
 
 Ctrl ctrl_config_share(uint8_t index) {
@@ -159,6 +165,12 @@ Ctrl ctrl_config_share(uint8_t index) {
     }
     else if (index == POLLING_RATE) {
         ctrl.payload[1] = config->polling_rate;
+    }
+    else if (index == CALIBRATION_360) {
+        uint16_t counts = calib360_get_counts();
+        ctrl.payload[1] = calib360_is_active();
+        ctrl.payload[2] = counts & 0xFF;
+        ctrl.payload[3] = counts >> 8;
     }
     return ctrl;
 }

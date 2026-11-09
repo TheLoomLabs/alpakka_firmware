@@ -126,6 +126,17 @@ static float gyro_accel_shape(GyroAccelCurve curve, float t, float p) {
     return 0;
 }
 
+// Real-world calibration: output scale so that one degree of controller
+// rotation gives `ratio` degrees in game, where a 360 turn takes `counts_360`
+// mouse counts. Scale is per raw gyro unit per base tick (250 Hz), the same
+// unit as CFG_GYRO_SENSITIVITY * sensitivity_multiplier. 0 = disabled.
+float gyro_real_world_scale(uint16_t counts_360, uint8_t ratio_tenths) {
+    if (counts_360 == 0) return 0;
+    float ratio = (ratio_tenths ?: 10) / 10.0f;
+    float counts_per_degree = counts_360 / 360.0f * ratio;
+    return GYRO_DPS_PER_LSB * counts_per_degree / CFG_TICK_FREQUENCY_BASE;
+}
+
 float gyro_accel_gain(GyroAccel *accel, float speed) {
     if (accel->curve == GYRO_ACCEL_OFF) return 1;
     float range = accel->speed_max - accel->threshold;
@@ -267,9 +278,17 @@ void Gyro__report_incremental(Gyro *self) {
         self->extras.ads_engage != PIN_NONE &&
         self->ads_button.is_pressed(&(self->ads_button))
     );
-    double x = imu_gyro.x * CFG_GYRO_SENSITIVITY_X * sensitivity_multiplier;
-    double y = imu_gyro.y * CFG_GYRO_SENSITIVITY_Y * sensitivity_multiplier;
-    double z = imu_gyro.z * CFG_GYRO_SENSITIVITY_Z * sensitivity_multiplier;
+    double x, y, z;
+    if (self->extras.rw_scale > 0) {
+        // Real-world calibration replaces the global mouse sensitivity.
+        x = imu_gyro.x * self->extras.rw_scale;
+        y = imu_gyro.y * self->extras.rw_scale;
+        z = imu_gyro.z * self->extras.rw_scale;
+    } else {
+        x = imu_gyro.x * CFG_GYRO_SENSITIVITY_X * sensitivity_multiplier;
+        y = imu_gyro.y * CFG_GYRO_SENSITIVITY_Y * sensitivity_multiplier;
+        z = imu_gyro.z * CFG_GYRO_SENSITIVITY_Z * sensitivity_multiplier;
+    }
     // Additional processing.
     double t = 1.0;
     double k = 0.5;

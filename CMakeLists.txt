@@ -79,6 +79,7 @@ target_include_directories(${PROJECT} PUBLIC
 target_sources(${PROJECT} PUBLIC
     src/bus.c
     src/button.c
+    src/calib360.c
     src/common.c
     src/config.c
     src/ctrl.c
