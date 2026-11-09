@@ -14,6 +14,7 @@ only these buttons are read:
 - R2: turn by exactly `counts` mouse counts (spread over about one second).
 - D-pad right / left: counts +1% / -1%.
 - D-pad up / down: counts +0.1% / -0.1% (at least one count).
+- R1 / L1: counts +1 / -1.
 - Home: cancel calibration mode.
 
 The user adjusts `counts` until the game turns exactly 360 degrees. The app
