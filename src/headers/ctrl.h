@@ -115,6 +115,9 @@ typedef enum CtrlSectionType_enum {
     SECTION_MACRO_2,
     SECTION_MACRO_3,
     SECTION_MACRO_4,
+    // Fork extension: macro names, stored for the app only.
+    SECTION_MACRO_NAMES_1 = 62,
+    SECTION_MACRO_NAMES_2 = 63,
 } CtrlSectionType;
 
 typedef struct _Ctrl {
@@ -260,7 +263,14 @@ typedef struct __packed _CtrlMacro {
     uint8_t format[2];  // Per-macro format byte (fork extension), see macro.h.
 } CtrlMacro;
 
+typedef struct __packed _CtrlMacroNames {
+    // Must be packed (58 bytes). Four macro names, UTF-8, zero padded.
+    char names[4][14];
+    uint8_t _padding[2];
+} CtrlMacroNames;
+
 _Static_assert(sizeof(CtrlGyro) == 58, "CtrlGyro must be 58 bytes");
+_Static_assert(sizeof(CtrlMacroNames) == 58, "CtrlMacroNames must be 58 bytes");
 _Static_assert(sizeof(CtrlMacro) == 58, "CtrlMacro must be 58 bytes");
 
 typedef union _CtrlSection {
@@ -273,6 +283,7 @@ typedef union _CtrlSection {
     CtrlGyro gyro;
     CtrlGyroAxis gyro_axis;
     CtrlMacro macro;
+    CtrlMacroNames macro_names;
 } CtrlSection;
 
 typedef struct _CtrlProfile {
