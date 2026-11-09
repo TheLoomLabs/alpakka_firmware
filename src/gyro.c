@@ -284,8 +284,10 @@ void Gyro__report_incremental(Gyro *self) {
         gyro_accel_update_speed(self, imu_gyro);
         GyroAccel *accel = ads ? &(self->extras.ads_accel) : &(self->accel);
         double gain = gyro_accel_gain(accel, self->accel_speed);
+        // Vertical (pitch) gets only part of the boost above the low gain.
+        double gain_y = accel->gain_min + (gain - accel->gain_min) * self->extras.accel_vertical;
         x *= gain;
-        y *= gain;
+        y *= gain_y;
         z *= gain;
     }
     if (ads) {
@@ -402,6 +404,7 @@ Gyro Gyro_ (
         .ads_sens = 1,
         .ads_accel = {.curve = GYRO_ACCEL_OFF, .gain_min = 1, .gain_max = 1},
         .space = GYRO_SPACE_LOCAL,
+        .accel_vertical = 1,
     };
     gyro.smooth_state = (Vector){0, 0, 0};
     gyro.gravity_init = false;

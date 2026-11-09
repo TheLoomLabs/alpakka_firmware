@@ -242,7 +242,10 @@ typedef struct __packed _CtrlGyro {
     uint8_t smooth_threshold;  // Tiered smoothing threshold, in 0.2 deg/s.
     uint8_t smooth_time;       // Tiered smoothing time constant, in ms.
     uint8_t space;             // GyroSpace.
-    uint8_t _padding[37];
+    // Vertical acceleration (fork extension): reduction of the acceleration
+    // boost on the vertical (pitch) axis, in %. 0 = same as horizontal.
+    uint8_t accel_vertical_cut;
+    uint8_t _padding[36];
 } CtrlGyro;
 
 typedef struct __packed _CtrlGyroAxis {

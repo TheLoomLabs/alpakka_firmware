@@ -49,6 +49,7 @@ typedef struct _GyroExtras {
     float smooth_threshold;  // deg/s.
     float smooth_time;       // ms.
     GyroSpace space;
+    float accel_vertical;    // Share of the acceleration boost on pitch, 0-1.
 } GyroExtras;
 
 typedef struct Gyro_struct Gyro;
