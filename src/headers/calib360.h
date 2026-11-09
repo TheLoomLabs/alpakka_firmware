@@ -7,8 +7,9 @@
 
 /*
 Calibration mode is started and stopped by the app (config key CALIBRATION_360)
-and is not stored. While active, normal profile input is paused and only these
-buttons are read:
+and is not stored. While active, button and stick input is paused (the gyro
+still aims, so the view can be lined up again, except during a test turn) and
+only these buttons are read:
 
 - R2: turn by exactly `counts` mouse counts (spread over about one second).
 - D-pad right / left: counts +1% / -1%.
@@ -25,6 +26,7 @@ then reads the value and stores it in the profile (CtrlGyro rw_counts_360).
 void calib360_start(uint16_t counts);
 void calib360_stop();
 bool calib360_is_active();
+bool calib360_is_spinning();
 uint16_t calib360_get_counts();
 // Returns true once after a start or stop: profile inputs must be released.
 bool calib360_take_reset();

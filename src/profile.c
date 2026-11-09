@@ -298,6 +298,10 @@ void profile_report_active() {
     if (calib360_take_reset()) profile_reset_all();
     if (calib360_is_active()) {
         calib360_report();
+        // Gyro keeps aiming so the view can be lined up again, but not during
+        // a test turn so it cannot change the result.
+        Profile* profile = profile_get_active(false);
+        if (!calib360_is_spinning()) profile->gyro.report(&profile->gyro);
         return;
     }
     // Reset all profiles (state) if needed.

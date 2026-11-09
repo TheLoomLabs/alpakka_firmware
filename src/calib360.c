@@ -77,6 +77,10 @@ bool calib360_is_active() {
     return active;
 }
 
+bool calib360_is_spinning() {
+    return active && spin_remaining > 0;
+}
+
 uint16_t calib360_get_counts() {
     return counts;
 }
