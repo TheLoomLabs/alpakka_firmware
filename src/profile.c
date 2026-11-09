@@ -184,6 +184,24 @@ void Profile__load_from_config(Profile *self, CtrlProfile *profile) {
         .exponent = ctrl_gyro.accel_exponent / 10.0f,
         .smoothing = ctrl_gyro.accel_smoothing,
     });
+    float smoothing = ctrl_gyro.accel_smoothing;
+    self->gyro.config_extras(&(self->gyro), (GyroExtras){
+        .ads_engage = ctrl_gyro.ads_engage ?: PIN_NONE,
+        .ads_sens = (ctrl_gyro.ads_sens ?: 100) / 100.0f,
+        .ads_accel = {
+            .curve = ctrl_gyro.ads_accel_curve,
+            .gain_min = (ctrl_gyro.ads_accel_gain_min ?: 100) / 100.0f,
+            .gain_max = (ctrl_gyro.ads_accel_gain_max ?: 10) / 10.0f,
+            .threshold = ctrl_gyro.ads_accel_threshold * 2.0f,
+            .speed_max = ctrl_gyro.ads_accel_speed_max * 4.0f,
+            .exponent = ctrl_gyro.ads_accel_exponent / 10.0f,
+            .smoothing = smoothing,
+        },
+        .tighten = ctrl_gyro.tighten / 10.0f,
+        .smooth_threshold = ctrl_gyro.smooth_threshold / 5.0f,
+        .smooth_time = ctrl_gyro.smooth_time,
+        .space = ctrl_gyro.space,
+    });
 }
 
 Profile Profile_ () {

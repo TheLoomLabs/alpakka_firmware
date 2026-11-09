@@ -55,6 +55,7 @@ Flow diagram: docs/replay.md
 #include "logging.h"
 #include "thanks.h"
 #include "power.h"
+#include "macro.h"
 
 // Toggle to prevent any further communication. Main use case being turning it
 // off while the protocol is being changed to avoid incoherent outputs.
@@ -98,6 +99,7 @@ void hid_matrix_reset(uint8_t keep) {
         if (action == keep) continue;  // Optionally do not reset specific actions.
         state_matrix[action] = 0;
     }
+    macro_reset();
     synced_keyboard = false;
     synced_mouse = false;
     synced_gamepad = false;
@@ -138,17 +140,15 @@ void hid_procedure_press(uint8_t procedure){
     if (procedure == PROC_ROTARY_MODE_4) rotary_set_mode(4);
     if (procedure == PROC_ROTARY_MODE_5) rotary_set_mode(5);
     // Macros.
-    if (procedure == PROC_MACRO_1) hid_macro(1);
-    if (procedure == PROC_MACRO_2) hid_macro(2);
-    if (procedure == PROC_MACRO_3) hid_macro(3);
-    if (procedure == PROC_MACRO_4) hid_macro(4);
-    if (procedure == PROC_MACRO_5) hid_macro(5);
-    if (procedure == PROC_MACRO_6) hid_macro(6);
-    if (procedure == PROC_MACRO_7) hid_macro(7);
-    if (procedure == PROC_MACRO_8) hid_macro(8);
+    if (procedure >= PROC_MACRO_1 && procedure <= PROC_MACRO_8) {
+        macro_trigger_press(procedure - PROC_MACRO_1 + 1);
+    }
 }
 
 void hid_procedure_release(uint8_t procedure) {
+    if (procedure >= PROC_MACRO_1 && procedure <= PROC_MACRO_8) {
+        macro_trigger_release(procedure - PROC_MACRO_1 + 1);
+    }
     if (procedure == PROC_HOME) profile_set_home(false);
     if (procedure == PROC_HOME_GAMEPAD) profile_set_home_gamepad(false);
 }
@@ -265,19 +265,9 @@ void hid_release_multiple_later_callback(alarm_id_t alarm, uint8_t *keys) {
 }
 
 void hid_macro(uint8_t index) {
-    uint8_t section = SECTION_MACRO_1 + ((index - 1) / 2);
-    uint8_t subindex = (index - 1) % 2;
-    CtrlProfile *profile = config_profile_read(profile_get_active_index(false));
-    uint8_t *macro = profile->sections[section].macro.macro[subindex];
-    if (alarms > 0) return;  // Disallows parallel macros. TODO fix.
-    uint16_t time = 10;
-    for(uint8_t i=0; i<28; i++) {
-        if (macro[i] == 0) break;
-        hid_press_later(macro[i], time);
-        time += 10;
-        hid_release_later(macro[i], time);
-        time += 10;
-    }
+    // Kept for API compatibility, macros are now played by macro.c.
+    macro_trigger_press(index);
+    macro_trigger_release(index);
 }
 
 bool hid_is_axis(uint8_t action) {

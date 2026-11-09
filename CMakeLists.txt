@@ -91,6 +91,7 @@ target_sources(${PROJECT} PUBLIC
     src/led.c
     src/logging.c
     src/loop.c
+    src/macro.c
     src/nvm.c
     src/power.c
     src/profile.c

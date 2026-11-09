@@ -2,6 +2,7 @@
 // Copyright (C) 2022, Input Labs Oy.
 
 #pragma once
+#include "vector.h"
 
 typedef enum GyroMode_enum {
     GYRO_MODE_OFF,
@@ -19,6 +20,12 @@ typedef enum GyroAccelCurve_enum {
     GYRO_ACCEL_SIGMOID,  // S-curve: precise zone, transition, flick zone.
 } GyroAccelCurve;
 
+typedef enum GyroSpace_enum {
+    GYRO_SPACE_LOCAL,   // Controller axes (stock behavior).
+    GYRO_SPACE_PLAYER,  // Yaw follows the real-world vertical axis (gravity).
+} GyroSpace;
+
+
 // Combined gyro value scale (IMU0 at 500 dps full scale, LSM6DS: 17.5 mdps/LSB).
 #define GYRO_DPS_PER_LSB 0.0175
 
@@ -34,6 +41,16 @@ typedef struct _GyroAccel {
 
 float gyro_accel_gain(GyroAccel *accel, float speed);
 
+typedef struct _GyroExtras {
+    uint8_t ads_engage;  // Pin, PIN_NONE if disabled.
+    float ads_sens;
+    GyroAccel ads_accel;
+    float tighten;           // deg/s.
+    float smooth_threshold;  // deg/s.
+    float smooth_time;       // ms.
+    GyroSpace space;
+} GyroExtras;
+
 typedef struct Gyro_struct Gyro;
 struct Gyro_struct {
     bool (*is_engaged) (Gyro *self);
@@ -45,6 +62,7 @@ struct Gyro_struct {
     void (*config_y) (Gyro *self, double min, double max, Actions neg, Actions pos, float sens);
     void (*config_z) (Gyro *self, double min, double max, Actions neg, Actions pos, float sens);
     void (*config_accel) (Gyro *self, GyroAccel accel);
+    void (*config_extras) (Gyro *self, GyroExtras extras);
     GyroMode mode;
     uint8_t engage;
     Button engage_button;
@@ -71,6 +89,11 @@ struct Gyro_struct {
     float sens_z;
     GyroAccel accel;
     float accel_speed;  // Smoothed angular speed, deg/s.
+    GyroExtras extras;
+    Button ads_button;
+    Vector smooth_state;  // Tiered smoothing residual.
+    Vector gravity;       // Smoothed gravity in gyro axes (player space).
+    bool gravity_init;
 };
 
 Gyro Gyro_ (

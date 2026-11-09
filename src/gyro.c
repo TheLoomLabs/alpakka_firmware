@@ -150,6 +150,64 @@ static void gyro_accel_update_speed(Gyro *self, Vector raw) {
     self->accel_speed += (speed - self->accel_speed) * alpha;
 }
 
+// Player space: replace local yaw with yaw around the real-world vertical axis.
+// Based on the "player space" technique from GyroWiki / JoyShockMapper.
+static Vector gyro_player_space(Gyro *self, Vector g) {
+    Vector a = imu_read_accel();
+    // Accelerometer remapped into the gyro axes (yaw=x, pitch=y, roll=z), see imu.c.
+    Vector up = {-a.z, a.x, a.y};
+    if (!self->gravity_init) {
+        self->gravity = up;
+        self->gravity_init = true;
+    } else {
+        float dt = 1000.0f / CFG_TICK_FREQUENCY;
+        float alpha = dt / (100.0f + dt);  // ~100ms time constant.
+        self->gravity.x += (up.x - self->gravity.x) * alpha;
+        self->gravity.y += (up.y - self->gravity.y) * alpha;
+        self->gravity.z += (up.z - self->gravity.z) * alpha;
+    }
+    Vector n = vector_normalize(self->gravity);
+    if (n.x < 0) n = vector_invert(n);  // Same sign convention as local yaw.
+    double world_yaw = g.x * n.x + g.z * n.z;  // Yaw and roll contributions only.
+    double local = sqrt(g.x * g.x + g.z * g.z);
+    double yaw = fmin(fabs(world_yaw) * 1.41, local);
+    yaw = world_yaw < 0 ? -yaw : yaw;
+    return (Vector){yaw, g.y, g.z};
+}
+
+// Tiered smoothing (only slow movements are smoothed) and soft tightening
+// (very slow movements are scaled down), to hide hand tremor.
+static Vector gyro_stabilize(Gyro *self, Vector g) {
+    GyroExtras *e = &(self->extras);
+    double speed = sqrt(g.x*g.x + g.y*g.y + g.z*g.z) * GYRO_DPS_PER_LSB;
+    if (e->smooth_threshold > 0 && e->smooth_time > 0) {
+        double t2 = e->smooth_threshold;
+        double t1 = t2 / 2;
+        double w = constrain((speed - t1) / (t2 - t1), 0, 1);
+        float dt = 1000.0f / CFG_TICK_FREQUENCY;
+        float alpha = dt / (e->smooth_time + dt);
+        self->smooth_state.x += (g.x * (1-w) - self->smooth_state.x) * alpha;
+        self->smooth_state.y += (g.y * (1-w) - self->smooth_state.y) * alpha;
+        self->smooth_state.z += (g.z * (1-w) - self->smooth_state.z) * alpha;
+        g.x = g.x * w + self->smooth_state.x;
+        g.y = g.y * w + self->smooth_state.y;
+        g.z = g.z * w + self->smooth_state.z;
+        speed = sqrt(g.x*g.x + g.y*g.y + g.z*g.z) * GYRO_DPS_PER_LSB;
+    }
+    if (e->tighten > 0 && speed < e->tighten) {
+        double k = speed / e->tighten;
+        g.x *= k;
+        g.y *= k;
+        g.z *= k;
+    }
+    return g;
+}
+
+static void gyro_reset_filters(Gyro *self) {
+    self->accel_speed = 0;
+    self->smooth_state = (Vector){0, 0, 0};
+}
+
 void Gyro__report_absolute(Gyro *self) {
     // Accel-based correction.
     gyro_accel_correction();
@@ -201,6 +259,14 @@ void Gyro__report_absolute(Gyro *self) {
 void Gyro__report_incremental(Gyro *self) {
      // Read gyro values.
     Vector imu_gyro = imu_read_gyro();
+    // Space and stabilization.
+    if (self->extras.space == GYRO_SPACE_PLAYER) imu_gyro = gyro_player_space(self, imu_gyro);
+    imu_gyro = gyro_stabilize(self, imu_gyro);
+    // Aim-down-sights modifier.
+    bool ads = (
+        self->extras.ads_engage != PIN_NONE &&
+        self->ads_button.is_pressed(&(self->ads_button))
+    );
     double x = imu_gyro.x * CFG_GYRO_SENSITIVITY_X * sensitivity_multiplier;
     double y = imu_gyro.y * CFG_GYRO_SENSITIVITY_Y * sensitivity_multiplier;
     double z = imu_gyro.z * CFG_GYRO_SENSITIVITY_Z * sensitivity_multiplier;
@@ -213,13 +279,19 @@ void Gyro__report_incremental(Gyro *self) {
     else if (y < 0 && y > -t) y = -hssnf(t, k, -y);
     if      (z > 0 && z <  t) z =  hssnf(t, k,  z);
     else if (z < 0 && z > -t) z = -hssnf(t, k, -z);
-    // Acceleration.
-    if (self->accel.curve != GYRO_ACCEL_OFF) {
+    // Acceleration (the ADS curve replaces the normal one while aiming).
+    if (self->accel.curve != GYRO_ACCEL_OFF || self->extras.ads_accel.curve != GYRO_ACCEL_OFF) {
         gyro_accel_update_speed(self, imu_gyro);
-        double gain = gyro_accel_gain(&(self->accel), self->accel_speed);
+        GyroAccel *accel = ads ? &(self->extras.ads_accel) : &(self->accel);
+        double gain = gyro_accel_gain(accel, self->accel_speed);
         x *= gain;
         y *= gain;
         z *= gain;
+    }
+    if (ads) {
+        x *= self->extras.ads_sens;
+        y *= self->extras.ads_sens;
+        z *= self->extras.ads_sens;
     }
     // Normalize per-tick output so sensitivity does not depend on polling rate.
     double rate_factor = (double)CFG_TICK_FREQUENCY_BASE / CFG_TICK_FREQUENCY;
@@ -244,11 +316,11 @@ bool Gyro__is_engaged(Gyro *self) {
 void Gyro__report(Gyro *self) {
     if (self->mode == GYRO_MODE_TOUCH_ON) {
         if (self->is_engaged(self)) self->report_incremental(self);
-        else self->accel_speed = 0;  // Avoid a stale-speed burst on re-engage.
+        else gyro_reset_filters(self);  // Avoid stale state bursts on re-engage.
     }
     else if (self->mode == GYRO_MODE_TOUCH_OFF) {
         if (!self->is_engaged(self)) self->report_incremental(self);
-        else self->accel_speed = 0;
+        else gyro_reset_filters(self);
     }
     else if (self->mode == GYRO_MODE_ALWAYS_ON) {
         self->report_incremental(self);
@@ -300,6 +372,16 @@ void Gyro__config_accel(Gyro *self, GyroAccel accel) {
     self->accel_speed = 0;
 }
 
+void Gyro__config_extras(Gyro *self, GyroExtras extras) {
+    self->extras = extras;
+    if (extras.ads_engage != PIN_NONE) {
+        Actions none = {0,};
+        self->ads_button = Button_(extras.ads_engage, NORMAL, none, none, none);
+    }
+    self->gravity_init = false;
+    gyro_reset_filters(self);
+}
+
 Gyro Gyro_ (
     GyroMode mode,
     uint8_t engage
@@ -314,6 +396,15 @@ Gyro Gyro_ (
     gyro.config_y = Gyro__config_y;
     gyro.config_z = Gyro__config_z;
     gyro.config_accel = Gyro__config_accel;
+    gyro.config_extras = Gyro__config_extras;
+    gyro.extras = (GyroExtras){
+        .ads_engage = PIN_NONE,
+        .ads_sens = 1,
+        .ads_accel = {.curve = GYRO_ACCEL_OFF, .gain_min = 1, .gain_max = 1},
+        .space = GYRO_SPACE_LOCAL,
+    };
+    gyro.smooth_state = (Vector){0, 0, 0};
+    gyro.gravity_init = false;
     gyro.accel = (GyroAccel){.curve = GYRO_ACCEL_OFF, .gain_min = 1, .gain_max = 1};
     gyro.accel_speed = 0;
     gyro.mode = mode;

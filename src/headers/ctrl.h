@@ -225,7 +225,21 @@ typedef struct __packed _CtrlGyro {
     uint8_t accel_speed_max;  // Speed where gain_max is reached, in 4 deg/s.
     uint8_t accel_exponent;   // Curve shape parameter, in 1/10.
     uint8_t accel_smoothing;  // Speed smoothing time constant, in ms.
-    uint8_t _padding[49];
+    // Aim-down-sights modifier (fork extension, zero = disabled / defaults).
+    uint8_t ads_engage;          // Button pin that activates ADS (0 = disabled).
+    uint8_t ads_sens;            // Sensitivity while aiming, in percent (0 = 100%).
+    uint8_t ads_accel_curve;     // Acceleration while aiming, same units as above.
+    uint8_t ads_accel_gain_min;
+    uint8_t ads_accel_gain_max;
+    uint8_t ads_accel_threshold;
+    uint8_t ads_accel_speed_max;
+    uint8_t ads_accel_exponent;
+    // Stabilization and space (fork extension, zero = disabled).
+    uint8_t tighten;           // Tightening threshold, in 0.1 deg/s.
+    uint8_t smooth_threshold;  // Tiered smoothing threshold, in 0.2 deg/s.
+    uint8_t smooth_time;       // Tiered smoothing time constant, in ms.
+    uint8_t space;             // GyroSpace.
+    uint8_t _padding[37];
 } CtrlGyro;
 
 typedef struct __packed _CtrlGyroAxis {
@@ -243,8 +257,11 @@ typedef struct __packed _CtrlGyroAxis {
 typedef struct __packed _CtrlMacro {
     // Must be packed (58 bytes).
     uint8_t macro[2][28];
-    uint8_t _padding[2];
+    uint8_t format[2];  // Per-macro format byte (fork extension), see macro.h.
 } CtrlMacro;
+
+_Static_assert(sizeof(CtrlGyro) == 58, "CtrlGyro must be 58 bytes");
+_Static_assert(sizeof(CtrlMacro) == 58, "CtrlMacro must be 58 bytes");
 
 typedef union _CtrlSection {
     CtrlProfileMeta meta;
