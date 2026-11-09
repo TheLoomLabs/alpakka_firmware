@@ -249,7 +249,8 @@ typedef struct __packed _CtrlGyro {
     // Real-world calibration (fork extension, 0 = off, use global mouse sens).
     uint16_t rw_counts_360;    // Mouse counts for a 360 turn in the game.
     uint8_t rw_ratio;          // In-game degrees per controller degree, 0.1 units.
-    uint8_t _padding[33];
+    uint8_t rw_enabled;        // Off keeps the calibration for later.
+    uint8_t _padding[32];
 } CtrlGyro;
 
 typedef struct __packed _CtrlGyroAxis {
