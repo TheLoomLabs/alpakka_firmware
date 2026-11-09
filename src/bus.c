@@ -75,6 +75,11 @@ void bus_i2c_io_cache_update() {
     io_cache_1 = bus_i2c_read_two(I2C_IO_1, I2C_IO_REG_INPUT);
 }
 
+// Both IO expanders as one word, to detect any button change.
+uint32_t bus_i2c_io_cache_all() {
+    return ((uint32_t)io_cache_1 << 16) | io_cache_0;
+}
+
 bool bus_i2c_io_cache_read(uint8_t device_index, uint8_t bit_index) {
     return (device_index ? io_cache_1 : io_cache_0) & (1 << bit_index);
 }

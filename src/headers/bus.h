@@ -46,6 +46,7 @@ uint16_t bus_i2c_read_two(uint8_t device, uint8_t reg);
 // IO expanders.
 void bus_i2c_io_cache_update();
 bool bus_i2c_io_cache_read(uint8_t device_index, uint8_t bit_index);
+uint32_t bus_i2c_io_cache_all();
 bool bus_i2c_io_read(uint8_t device_id, uint8_t bit_index);
 
 // SPI.

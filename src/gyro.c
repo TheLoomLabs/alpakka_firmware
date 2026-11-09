@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+#include "bus.h"
 #include "button.h"
 #include "config.h"
 #include "gyro.h"
@@ -214,9 +215,41 @@ static Vector gyro_stabilize(Gyro *self, Vector g) {
     return g;
 }
 
+// Shot shake suppression: pressing or releasing a button jolts the controller.
+// For a short window after any button change, movement slower than a threshold
+// is scaled down (the slower, the more). The threshold fades to zero over the
+// window, so fast deliberate movement always passes and aim returns smoothly.
+static Vector gyro_shot_suppress(Gyro *self, Vector g) {
+    GyroExtras *e = &(self->extras);
+    if (e->shot_time <= 0) return g;
+    uint32_t buttons = bus_i2c_io_cache_all();
+    if (!self->shot_init) {
+        // Do not treat changes made while disengaged as a fresh press.
+        self->shot_init = true;
+        self->shot_left = 0;
+    } else if (buttons != self->shot_buttons) {
+        self->shot_left = e->shot_time;
+    }
+    self->shot_buttons = buttons;
+    if (self->shot_left <= 0) return g;
+    float threshold = e->shot_threshold * (self->shot_left / e->shot_time);
+    self->shot_left -= 1000.0f / CFG_TICK_FREQUENCY;
+    double speed = sqrt(g.x*g.x + g.y*g.y + g.z*g.z) * GYRO_DPS_PER_LSB;
+    if (speed < threshold) {
+        double k = speed / threshold;
+        k *= k;  // Stronger than tightening: a jolt is short and small.
+        g.x *= k;
+        g.y *= k;
+        g.z *= k;
+    }
+    return g;
+}
+
 static void gyro_reset_filters(Gyro *self) {
     self->accel_speed = 0;
     self->smooth_state = (Vector){0, 0, 0};
+    self->shot_init = false;
+    self->shot_left = 0;
 }
 
 void Gyro__report_absolute(Gyro *self) {
@@ -273,6 +306,7 @@ void Gyro__report_incremental(Gyro *self) {
     // Space and stabilization.
     if (self->extras.space == GYRO_SPACE_PLAYER) imu_gyro = gyro_player_space(self, imu_gyro);
     imu_gyro = gyro_stabilize(self, imu_gyro);
+    imu_gyro = gyro_shot_suppress(self, imu_gyro);
     // Aim-down-sights modifier.
     bool ads = (
         self->extras.ads_engage != PIN_NONE &&
@@ -427,6 +461,9 @@ Gyro Gyro_ (
     };
     gyro.smooth_state = (Vector){0, 0, 0};
     gyro.gravity_init = false;
+    gyro.shot_buttons = 0;
+    gyro.shot_init = false;
+    gyro.shot_left = 0;
     gyro.accel = (GyroAccel){.curve = GYRO_ACCEL_OFF, .gain_min = 1, .gain_max = 1};
     gyro.accel_speed = 0;
     gyro.mode = mode;

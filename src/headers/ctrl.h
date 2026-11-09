@@ -250,7 +250,11 @@ typedef struct __packed _CtrlGyro {
     uint16_t rw_counts_360;    // Mouse counts for a 360 turn in the game.
     uint8_t rw_ratio;          // In-game degrees per controller degree, 0.1 units.
     uint8_t rw_enabled;        // Off keeps the calibration for later.
-    uint8_t _padding[32];
+    // Shot shake suppression (fork extension, 0 = off): after any button press
+    // or release, slow gyro movement is damped for a short time.
+    uint8_t shot_time;         // Window length, in ms.
+    uint8_t shot_threshold;    // Speed below which movement is damped, in deg/s (0 = 30).
+    uint8_t _padding[30];
 } CtrlGyro;
 
 typedef struct __packed _CtrlGyroAxis {

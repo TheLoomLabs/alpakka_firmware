@@ -204,6 +204,8 @@ void Profile__load_from_config(Profile *self, CtrlProfile *profile) {
         .space = ctrl_gyro.space,
         .accel_vertical = 1 - (ctrl_gyro.accel_vertical_cut > 100 ? 100 : ctrl_gyro.accel_vertical_cut) / 100.0f,
         .rw_scale = ctrl_gyro.rw_enabled ? gyro_real_world_scale(ctrl_gyro.rw_counts_360, ctrl_gyro.rw_ratio) : 0,
+        .shot_time = ctrl_gyro.shot_time,
+        .shot_threshold = ctrl_gyro.shot_threshold ?: 30,
     });
 }
 

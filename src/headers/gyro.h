@@ -53,6 +53,8 @@ typedef struct _GyroExtras {
     float accel_vertical;    // Share of the acceleration boost on pitch, 0-1.
     float rw_scale;          // Real-world calibration: counts per base tick per
                              // raw gyro unit. 0 = use global mouse sensitivity.
+    float shot_time;         // Shot shake suppression window, ms (0 = off).
+    float shot_threshold;    // deg/s.
 } GyroExtras;
 
 typedef struct Gyro_struct Gyro;
@@ -98,6 +100,9 @@ struct Gyro_struct {
     Vector smooth_state;  // Tiered smoothing residual.
     Vector gravity;       // Smoothed gravity in gyro axes (player space).
     bool gravity_init;
+    uint32_t shot_buttons;  // Last seen IO expander state.
+    bool shot_init;
+    float shot_left;        // ms left in the suppression window.
 };
 
 Gyro Gyro_ (
