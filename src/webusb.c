@@ -170,13 +170,27 @@ void webusb_handle_config_get(Ctrl_cfg_type key) {
     webusb_pending_config_share = key;
 }
 
+// Number of sections in a profile (CtrlProfile.sections).
+#define CTRL_PROFILE_SECTIONS (sizeof(((CtrlProfile*)0)->sections) / sizeof(CtrlSection))
+
+// Indexes come from the host, reject anything outside the profile arrays.
+static bool webusb_is_valid_section(uint8_t profile, uint8_t section) {
+    if (profile >= NVM_PROFILE_SLOTS || profile >= PROFILE_SLOTS || section >= CTRL_PROFILE_SECTIONS) {
+        warn("WebUSB: Ignored invalid profile=%i section=%i\n", profile, section);
+        return false;
+    }
+    return true;
+}
+
 void webusb_handle_section_get(uint8_t profile, uint8_t section) {
+    if (!webusb_is_valid_section(profile, section)) return;
     webusb_pending_profile_share = profile;
     webusb_pending_section_share = section;
 }
 
 void webusb_handle_section_set(uint8_t profileIndex, uint8_t sectionIndex, uint8_t section[58]) {
     debug("WebUSB: Handle profile SET %i %i\n", profileIndex, sectionIndex);
+    if (!webusb_is_valid_section(profileIndex, sectionIndex)) return;
     // Update profile in config.
     CtrlProfile *profile_cfg = config_profile_read(profileIndex);
     memcpy(&profile_cfg->sections[sectionIndex], section, sizeof(CtrlSection));

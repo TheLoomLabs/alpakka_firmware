@@ -612,6 +612,14 @@ void config_profile_default_all() {
 
 void config_profile_overwrite(uint8_t indexTo, int8_t indexFrom) {
     debug("Config: Profile overwrite %i -> %i\n", indexFrom, indexTo);
+    // Indexes can come from the host, reject anything outside the profile cache.
+    // Negative indexFrom selects a default profile template (see config_profile_default).
+    bool valid_to = indexTo < NVM_PROFILE_SLOTS;
+    bool valid_from = (indexFrom > -NVM_PROFILE_SLOTS) && (indexFrom < NVM_PROFILE_SLOTS);
+    if (!valid_to || !valid_from) {
+        warn("Config: Ignored invalid profile overwrite %i -> %i\n", indexFrom, indexTo);
+        return;
+    }
     // Remember name.
     char name[24];
     CtrlProfileMeta *meta = &(config_profile_cache[indexTo]).sections[SECTION_META].meta;
