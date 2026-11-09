@@ -27,6 +27,16 @@ static DeviceMode device_mode = WIRED;
 static bool battery_low = false;
 static uint64_t system_clock = 0;
 
+uint16_t loop_get_tick_frequency() {
+    #if defined DEVICE_DONGLE
+        return CFG_TICK_FREQUENCY_DEFAULT;
+    #else
+        // The wireless link was designed around the stock rate.
+        if (device_mode != WIRED) return CFG_TICK_FREQUENCY_DEFAULT;
+        return config_get_polling_rate_hz();
+    #endif
+}
+
 DeviceMode loop_get_device_mode() {
     return device_mode;
 }

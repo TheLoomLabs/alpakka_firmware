@@ -138,7 +138,7 @@
     ADDR_XINPUT_IN,  /* bEndpointAddress */\
     0x03,            /* bmAttributes */\
     0x20, 0x00,      /* wMaxPacketSize */\
-    0x04             /* bInterval */\
+    0x01             /* bInterval (1ms, allows up to 1000Hz polling) */\
 
 #define DESCRIPTOR_ENDPOINT_XINPUT_OUT \
     0x07,             /* bLength */\

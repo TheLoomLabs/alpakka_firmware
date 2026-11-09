@@ -100,6 +100,56 @@ double hssnf(double t, double k, double x) {
     return a / b;
 }
 
+// Normalized curve shape: maps t in [0, 1] to [0, 1].
+// Mirrored in the ctrl-app (lib/gyro_accel.ts) for plotting, keep in sync.
+static float gyro_accel_shape(GyroAccelCurve curve, float t, float p) {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    if (curve == GYRO_ACCEL_LINEAR) {
+        return t;
+    }
+    if (curve == GYRO_ACCEL_POWER) {
+        if (p <= 0) p = 2;
+        return powf(t, p);
+    }
+    if (curve == GYRO_ACCEL_NATURAL) {
+        if (p <= 0) p = 3;
+        return (1 - expf(-p * t)) / (1 - expf(-p));
+    }
+    if (curve == GYRO_ACCEL_SIGMOID) {
+        if (p <= 0) p = 10;
+        float l0 = 1 / (1 + expf(p * 0.5f));
+        float l1 = 1 / (1 + expf(-p * 0.5f));
+        float lt = 1 / (1 + expf(-p * (t - 0.5f)));
+        return (lt - l0) / (l1 - l0);
+    }
+    return 0;
+}
+
+float gyro_accel_gain(GyroAccel *accel, float speed) {
+    if (accel->curve == GYRO_ACCEL_OFF) return 1;
+    float range = accel->speed_max - accel->threshold;
+    float t = (range > 0) ? (speed - accel->threshold) / range : (speed > accel->threshold);
+    float shape = gyro_accel_shape(accel->curve, t, accel->exponent);
+    return accel->gain_min + (accel->gain_max - accel->gain_min) * shape;
+}
+
+// Update the smoothed angular speed (deg/s) from the axes that are in use.
+static void gyro_accel_update_speed(Gyro *self, Vector raw) {
+    bool use_x = self->actions_x_pos[0] || self->actions_x_neg[0];
+    bool use_y = self->actions_y_pos[0] || self->actions_y_neg[0];
+    bool use_z = self->actions_z_pos[0] || self->actions_z_neg[0];
+    double x = use_x ? raw.x * self->sens_x : 0;
+    double y = use_y ? raw.y * self->sens_y : 0;
+    double z = use_z ? raw.z * self->sens_z : 0;
+    float speed = sqrt(x*x + y*y + z*z) * GYRO_DPS_PER_LSB;
+    // Exponential moving average with a time constant in milliseconds, so the
+    // smoothing feels the same at any polling rate.
+    float dt = 1000.0f / CFG_TICK_FREQUENCY;
+    float alpha = dt / (self->accel.smoothing + dt);
+    self->accel_speed += (speed - self->accel_speed) * alpha;
+}
+
 void Gyro__report_absolute(Gyro *self) {
     // Accel-based correction.
     gyro_accel_correction();
@@ -163,6 +213,19 @@ void Gyro__report_incremental(Gyro *self) {
     else if (y < 0 && y > -t) y = -hssnf(t, k, -y);
     if      (z > 0 && z <  t) z =  hssnf(t, k,  z);
     else if (z < 0 && z > -t) z = -hssnf(t, k, -z);
+    // Acceleration.
+    if (self->accel.curve != GYRO_ACCEL_OFF) {
+        gyro_accel_update_speed(self, imu_gyro);
+        double gain = gyro_accel_gain(&(self->accel), self->accel_speed);
+        x *= gain;
+        y *= gain;
+        z *= gain;
+    }
+    // Normalize per-tick output so sensitivity does not depend on polling rate.
+    double rate_factor = (double)CFG_TICK_FREQUENCY_BASE / CFG_TICK_FREQUENCY;
+    x *= rate_factor;
+    y *= rate_factor;
+    z *= rate_factor;
     // Report.
     if (x >= 0) gyro_incremental_output( x * self->sens_x, self->actions_x_pos);
     else        gyro_incremental_output(-x * self->sens_x, self->actions_x_neg);
@@ -181,9 +244,11 @@ bool Gyro__is_engaged(Gyro *self) {
 void Gyro__report(Gyro *self) {
     if (self->mode == GYRO_MODE_TOUCH_ON) {
         if (self->is_engaged(self)) self->report_incremental(self);
+        else self->accel_speed = 0;  // Avoid a stale-speed burst on re-engage.
     }
     else if (self->mode == GYRO_MODE_TOUCH_OFF) {
         if (!self->is_engaged(self)) self->report_incremental(self);
+        else self->accel_speed = 0;
     }
     else if (self->mode == GYRO_MODE_ALWAYS_ON) {
         self->report_incremental(self);
@@ -230,6 +295,11 @@ void Gyro__config_z(Gyro *self, double min, double max, Actions neg, Actions pos
     self->sens_z = sens;
 }
 
+void Gyro__config_accel(Gyro *self, GyroAccel accel) {
+    self->accel = accel;
+    self->accel_speed = 0;
+}
+
 Gyro Gyro_ (
     GyroMode mode,
     uint8_t engage
@@ -243,6 +313,9 @@ Gyro Gyro_ (
     gyro.config_x = Gyro__config_x;
     gyro.config_y = Gyro__config_y;
     gyro.config_z = Gyro__config_z;
+    gyro.config_accel = Gyro__config_accel;
+    gyro.accel = (GyroAccel){.curve = GYRO_ACCEL_OFF, .gain_min = 1, .gain_max = 1};
+    gyro.accel_speed = 0;
     gyro.mode = mode;
     gyro.engage = engage;
     if (engage != PIN_NONE && engage != PIN_TOUCH_IN) {

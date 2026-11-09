@@ -26,12 +26,26 @@
 #define CFG_LED_BRIGHTNESS 0.2
 
 #ifdef DEVICE_DONGLE
-    #define CFG_TICK_FREQUENCY 1000  // Hz.
+    #define CFG_TICK_FREQUENCY_DEFAULT 1000  // Hz.
 #else
-    #define CFG_TICK_FREQUENCY 250  // Hz.
+    #define CFG_TICK_FREQUENCY_DEFAULT 250  // Hz.
 #endif
 
-#define CFG_IMU_TICK_SAMPLES 128  // Multi-sampling per pooling cycle.
+// Reference frequency that per-tick tunings (sensitivities, smoothing) were
+// designed for. Used to normalize values when the polling rate changes.
+#define CFG_TICK_FREQUENCY_BASE 250  // Hz.
+
+// The tick frequency is now runtime configurable (polling rate setting).
+uint16_t loop_get_tick_frequency();
+#define CFG_TICK_FREQUENCY (loop_get_tick_frequency())
+
+typedef enum _PollingRate {
+    POLLING_RATE_250 = 0,  // Zero so existing configs keep the stock rate.
+    POLLING_RATE_500,
+    POLLING_RATE_1000,
+} PollingRate;
+
+#define CFG_IMU_TICK_SAMPLES 128  // Multi-sampling per pooling cycle (at base frequency).
 
 #define CFG_TICK_INTERVAL_IN_MS  (1000 / CFG_TICK_FREQUENCY)
 #define CFG_TICK_INTERVAL_IN_US  (1000000 / CFG_TICK_FREQUENCY)
@@ -111,7 +125,8 @@ typedef struct __packed _Config {
     bool swap_gyros;
     bool touch_invert_polarity;
     uint8_t thumbstick_smooth_samples;
-    uint8_t padding[256]; // Guarantee block is at least 256 bytes or more.
+    uint8_t polling_rate;  // PollingRate (fork extension).
+    uint8_t padding[255]; // Guarantee block is at least 256 bytes or more.
 } Config;
 
 void config_init();
@@ -160,6 +175,8 @@ void config_set_swap_gyros(bool value);
 void config_set_touch_invert_polarity(bool value);
 void config_set_gyro_user_offset(int8_t x, int8_t y, int8_t z);
 void config_set_thumbstick_smooth_samples(uint8_t value);
+void config_set_polling_rate(uint8_t value);
+uint16_t config_get_polling_rate_hz();
 
 // Profiles.
 uint8_t config_get_profile();

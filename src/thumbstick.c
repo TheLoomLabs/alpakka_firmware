@@ -37,7 +37,9 @@ float thumbstick_adc_smoothed(uint8_t pin) {
     if (!thumbstick_smooth_samples) return thumbstick_adc(pin);
     uint8_t channel = pin - PIN_ADC_FIRST;
     float value = thumbstick_adc(pin);
-    value = smooth(smoothed[channel], value, (float)(thumbstick_smooth_samples));  // Rolling average.
+    // Rolling average, window scaled so its duration does not depend on the polling rate.
+    float samples = (float)thumbstick_smooth_samples * CFG_TICK_FREQUENCY / CFG_TICK_FREQUENCY_BASE;
+    value = smooth(smoothed[channel], value, samples);
     smoothed[channel] = value;
     return value;
 }

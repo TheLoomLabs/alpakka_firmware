@@ -108,7 +108,7 @@ void config_sync() {
     // Do not check in every cycle.
     static uint16_t i = 0;
     i++;
-    if (i != NVM_SYNC_FREQUENCY) return;
+    if (i < NVM_SYNC_FREQUENCY) return;  // '<' since the polling rate can change at runtime.
     else i = 0;
     // Sync main config.
     if (!config_cache_synced) {
@@ -210,6 +210,7 @@ void config_print() {
     info("  long_calibration=%i\n", config_cache.long_calibration);
     info("  swap_gyros=%i\n", config_cache.swap_gyros);
     info("  touch_invert_polarity=%i\n", config_cache.touch_invert_polarity);
+    info("  polling_rate=%i (%iHz)\n", config_cache.polling_rate, config_get_polling_rate_hz());
     info("  offset_thumbstick_0 x=%.4f y=%.4f\n",
         config_cache.offset_ts_lx,
         config_cache.offset_ts_ly
@@ -534,6 +535,20 @@ void config_set_thumbstick_smooth_samples(uint8_t value) {
     config_cache.thumbstick_smooth_samples = value;
     config_cache_synced = false;
     thumbstick_update_smooth_samples();
+}
+
+void config_set_polling_rate(uint8_t value) {
+    if (value > POLLING_RATE_1000) value = POLLING_RATE_250;
+    config_cache.polling_rate = value;
+    config_cache_synced = false;
+    info("Config: polling_rate=%i (%iHz)\n", value, config_get_polling_rate_hz());
+    thumbstick_update_smooth_samples();
+}
+
+uint16_t config_get_polling_rate_hz() {
+    if (config_cache.polling_rate == POLLING_RATE_500) return 500;
+    if (config_cache.polling_rate == POLLING_RATE_1000) return 1000;
+    return 250;
 }
 
 void config_set_problem(uint8_t flag, bool state) {

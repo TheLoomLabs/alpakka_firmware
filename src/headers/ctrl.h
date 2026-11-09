@@ -49,6 +49,7 @@ typedef enum Ctrl_cfg_type_enum {
     TOUCH_INVERT_POLARITY,
     GYRO_USER_OFFSET,
     THUMBSTICK_SMOOTH_SAMPLES,
+    POLLING_RATE,
 } Ctrl_cfg_type;
 
 typedef enum CtrlSectionType_enum {
@@ -216,7 +217,15 @@ typedef struct __packed _CtrlGyro {
     // Must be packed (58 bytes).
     uint8_t mode;
     uint8_t engage;
-    uint8_t _padding[56];
+    // Gyro acceleration (fork extension, zero = disabled / defaults).
+    uint8_t accel_curve;      // GyroAccelCurve.
+    uint8_t accel_gain_min;   // Gain at low speed, in 1/100 (0 = 1.00x).
+    uint8_t accel_gain_max;   // Gain at high speed, in 1/10.
+    uint8_t accel_threshold;  // Speed where acceleration starts, in 2 deg/s.
+    uint8_t accel_speed_max;  // Speed where gain_max is reached, in 4 deg/s.
+    uint8_t accel_exponent;   // Curve shape parameter, in 1/10.
+    uint8_t accel_smoothing;  // Speed smoothing time constant, in ms.
+    uint8_t _padding[49];
 } CtrlGyro;
 
 typedef struct __packed _CtrlGyroAxis {

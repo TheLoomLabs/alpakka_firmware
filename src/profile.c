@@ -175,6 +175,15 @@ void Profile__load_from_config(Profile *self, CtrlProfile *profile) {
         ctrl_gyro_z.actions_pos,
         (ctrl_gyro_z.sens ?: 100.0f) / 100.0f
     );
+    self->gyro.config_accel(&(self->gyro), (GyroAccel){
+        .curve = ctrl_gyro.accel_curve,
+        .gain_min = (ctrl_gyro.accel_gain_min ?: 100) / 100.0f,
+        .gain_max = (ctrl_gyro.accel_gain_max ?: 10) / 10.0f,
+        .threshold = ctrl_gyro.accel_threshold * 2.0f,
+        .speed_max = ctrl_gyro.accel_speed_max * 4.0f,
+        .exponent = ctrl_gyro.accel_exponent / 10.0f,
+        .smoothing = ctrl_gyro.accel_smoothing,
+    });
 }
 
 Profile Profile_ () {

@@ -99,6 +99,9 @@ void ctrl_config_set(Ctrl_cfg_type key, uint8_t preset, uint8_t values[5]) {
     else if (key == THUMBSTICK_SMOOTH_SAMPLES) {
         config_set_thumbstick_smooth_samples(preset);
     }
+    else if (key == POLLING_RATE) {
+        config_set_polling_rate(preset);
+    }
 }
 
 Ctrl ctrl_config_share(uint8_t index) {
@@ -153,6 +156,9 @@ Ctrl ctrl_config_share(uint8_t index) {
     }
     else if (index == THUMBSTICK_SMOOTH_SAMPLES) {
         ctrl.payload[1] = config->thumbstick_smooth_samples;
+    }
+    else if (index == POLLING_RATE) {
+        ctrl.payload[1] = config->polling_rate;
     }
     return ctrl;
 }
