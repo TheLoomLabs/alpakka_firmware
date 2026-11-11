@@ -141,13 +141,13 @@ void hid_procedure_press(uint8_t procedure){
     if (procedure == PROC_ROTARY_MODE_5) rotary_set_mode(5);
     // Macros.
     if (procedure >= PROC_MACRO_1 && procedure <= PROC_MACRO_8) {
-        macro_trigger_press(procedure - PROC_MACRO_1 + 1);
+        macro_trigger_press(procedure - (PROC_MACRO_1) + 1);
     }
 }
 
 void hid_procedure_release(uint8_t procedure) {
     if (procedure >= PROC_MACRO_1 && procedure <= PROC_MACRO_8) {
-        macro_trigger_release(procedure - PROC_MACRO_1 + 1);
+        macro_trigger_release(procedure - (PROC_MACRO_1) + 1);
     }
     if (procedure == PROC_HOME) profile_set_home(false);
     if (procedure == PROC_HOME_GAMEPAD) profile_set_home_gamepad(false);
@@ -313,7 +313,7 @@ MouseReport hid_get_mouse_report() {
     // Create button bitmask.
     int8_t buttons = 0;
     for(int i=0; i<5; i++) {
-        buttons += state_matrix[MOUSE_INDEX + i] << i;
+        buttons += (!!state_matrix[MOUSE_INDEX + i]) << i;  // Held by several sources = still one bit.
     }
     mouse_scroll_y += state_matrix[MOUSE_SCROLL_UP] - state_matrix[MOUSE_SCROLL_DOWN];
     // Manage remainders.
