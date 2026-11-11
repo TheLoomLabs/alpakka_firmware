@@ -56,6 +56,7 @@ Flow diagram: docs/replay.md
 #include "thanks.h"
 #include "power.h"
 #include "macro.h"
+#include "gyro.h"
 
 // Toggle to prevent any further communication. Main use case being turning it
 // off while the protocol is being changed to avoid incoherent outputs.
@@ -139,6 +140,7 @@ void hid_procedure_press(uint8_t procedure){
     if (procedure == PROC_ROTARY_MODE_3) rotary_set_mode(3);
     if (procedure == PROC_ROTARY_MODE_4) rotary_set_mode(4);
     if (procedure == PROC_ROTARY_MODE_5) rotary_set_mode(5);
+    if (procedure == PROC_GYRO_ADS_TOGGLE) gyro_ads_toggle();
     // Macros.
     if (procedure >= PROC_MACRO_1 && procedure <= PROC_MACRO_8) {
         macro_trigger_press(procedure - (PROC_MACRO_1) + 1);

@@ -11,6 +11,8 @@
 #include "common.h"
 #include "hid.h"
 #include "imu.h"
+#include "led.h"
+#include "logging.h"
 #include "pin.h"
 #include "touch.h"
 #include "vector.h"
@@ -300,6 +302,28 @@ void Gyro__report_absolute(Gyro *self) {
     // printf("\r%6.1f %6.1f %6.1f", x*100, y*100, z*100);
 }
 
+// Aim-down-sights boost, switched with PROC_GYRO_ADS_TOGGLE. Runtime only:
+// it is on again after a restart.
+static bool ads_enabled = true;
+
+void gyro_ads_toggle() {
+    ads_enabled = !ads_enabled;
+    info("Gyro: aim boost %s\n", ads_enabled ? "on" : "off");
+    // Feedback while Home is held: blinking = on, dark = off. The profile
+    // LEDs come back when Home is released.
+    if (ads_enabled) {
+        led_blink_mask(LED_ALL);
+        led_set_mode(LED_MODE_BLINK);
+    } else {
+        led_static_mask(LED_NONE);
+        led_set_mode(LED_MODE_ENGAGE);
+    }
+}
+
+bool gyro_ads_is_enabled() {
+    return ads_enabled;
+}
+
 void Gyro__report_incremental(Gyro *self) {
      // Read gyro values.
     Vector imu_gyro = imu_read_gyro();
@@ -309,6 +333,7 @@ void Gyro__report_incremental(Gyro *self) {
     imu_gyro = gyro_shot_suppress(self, imu_gyro);
     // Aim-down-sights modifier.
     bool ads = (
+        ads_enabled &&
         self->extras.ads_engage != PIN_NONE &&
         self->ads_button.is_pressed(&(self->ads_button))
     );

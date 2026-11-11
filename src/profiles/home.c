@@ -111,7 +111,11 @@ void config_profile_default_home(CtrlProfile *profile){
         .hint="Click",
     };
     profile->sections[SECTION_L4].button = (CtrlButton){};
-    profile->sections[SECTION_R4].button = (CtrlButton){};
+    profile->sections[SECTION_R4].button = (CtrlButton){
+        .mode=NORMAL,
+        .actions={PROC_GYRO_ADS_TOGGLE},
+        .hint="Aim boost",
+    };
 
     // Thumbstick (left).
     profile->sections[SECTION_LSTICK_SETTINGS].thumbstick = (CtrlThumbstick){

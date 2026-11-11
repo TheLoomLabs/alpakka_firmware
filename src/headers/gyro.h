@@ -111,3 +111,6 @@ Gyro Gyro_ (
 );
 
 void gyro_update_sensitivity();
+// Aim-down-sights boost on / off at runtime (fork extension, not stored).
+void gyro_ads_toggle();
+bool gyro_ads_is_enabled();
